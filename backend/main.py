@@ -77,6 +77,11 @@ async def login_user(user: UserLogin):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
     
     return {"message": "Login successful!"}
+    
+@app.get("/")
+async def read_root():
+    return {"message": "Hello, world!"}
+
 
 @app.post("/register_with_preferences")
 async def register_with_preferences(preferences: Preferences):
