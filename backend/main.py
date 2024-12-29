@@ -130,5 +130,5 @@ async def chatbot_endpoint(request: ChatRequest):
         return {"response": f"Error: {str(e)}", "ids": []}
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 3000))  # Use the port set by Render, default to 8000
-    uvicorn.run(app, host="0.0.0.0", port=port)  # Bind to 0.0.0.0 to allow external access
+    port = int(os.environ.get("PORT", 8000))  
+    uvicorn.run(app, host="0.0.0.0", port=port)  
