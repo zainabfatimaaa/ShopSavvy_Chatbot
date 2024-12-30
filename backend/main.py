@@ -119,7 +119,7 @@ async def register_with_preferences(preferences: Preferences):
     )
     return {"message": "User registered with preferences successfully"}
 
-@app.post("/chatbot_response")
+@app.post("/chatbot")
 async def chatbot_endpoint(request: ChatRequest):
     user_message = request.message
 
