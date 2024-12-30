@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pymongo import MongoClient
+from dotenv import load_dotenv
+import os
 import bcrypt
 from chatbot import Chatbot
 from hashlib import sha256
@@ -10,9 +12,22 @@ from collections import deque
 
 app = FastAPI()
 
-mongo_client = MongoClient("mongodb+srv://AhmadJb:F6ndXplHiGRKfR56@products.btwmn.mongodb.net/")
-db = mongo_client["LLMs_Project"]
-users_collection = db["Users"]
+load_dotenv()
+
+MONGODB_URI = os.getenv("MONGODB_URI")
+
+try:
+    client = MongoClient(MONGODB_URI)
+    client.admin.command('ping')
+    print("Connected to MongoDB successfully!")
+except Exception as e:
+    print("Failed to connect to MongoDB:", e)
+    exit(1)
+
+# Select the database and collection
+db = client["test"]
+collection = db["productdata"]
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -104,7 +119,7 @@ async def register_with_preferences(preferences: Preferences):
     )
     return {"message": "User registered with preferences successfully"}
 
-@app.post("/chatbot")
+@app.post("/chatbot_response")
 async def chatbot_endpoint(request: ChatRequest):
     user_message = request.message
 
