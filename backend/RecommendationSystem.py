@@ -8,10 +8,22 @@ from pinecone import Pinecone, ServerlessSpec
 from RecTemplate import retriever_template
 from pymongo import MongoClient
 from fastapi import FastAPI
+from pydantic import BaseModel
+from bson import ObjectId
 
 load_dotenv()
 
 app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins for testing, can be restricted later
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 client = Groq(
     api_key=os.getenv("GROQ_API")  # Ensure the GROQ_API environment variable is set
@@ -78,22 +90,33 @@ class RecommendationSystem:
         )
         return chat_completion.choices[0].message.content
 
+
+
+@app.get("/")
+async def root():
+    return {"message": "API is running!"}
+
+class PreferencesRequest(BaseModel):
+    input_text: str
+
+# Initialize your RecommendationSystem
+recommendation_system = RecommendationSystem()
+
 @app.post("/recommendations")
-async def chatbot_endpoint(preferences: str):
-    rec_sys = RecommendationSystem()
+async def get_product_ids(preferences_request: PreferencesRequest):
+    # Extract product IDs based on the provided preferences
+    preferences = preferences_request.input_text
+    print(preferences)
+    response_text = recommendation_system.generate_with_groq(preferences)
+    print(response_text)
+    product_ids = recommendation_system.extract_preferenced_items(response_text)
+    
+    # Return the list of product IDs as a response
+    return {"product_ids": product_ids}
 
-    # Step 1: Generate response from the model
-    response_text = rec_sys.generate_with_groq(preferences)
-
-    # Step 2: Extract recommended product IDs
-    retrieved_ids = rec_sys.extract_preferenced_items(response_text)
-
-    # Step 3: Fetch product details from MongoDB
-    retrieved_object_ids = [ObjectId(id) for id in retrieved_ids]
-    products = list(collection.find({"_id": {"$in": retrieved_object_ids}}))
-
-    return {"recommendedProducts": products}
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  
+    uvicorn.run(app, host="0.0.0.0", port=port)  
 # if __name__ == "__main__":
 #     # Initialize the recommendation system
 #     rec_sys = RecommendationSystem()

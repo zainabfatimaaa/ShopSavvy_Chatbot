@@ -8,6 +8,7 @@ import bcrypt
 from RecommendationSystem import RecommendationSystem
 from hashlib import sha256
 from collections import deque
+from RecommendationSystem import
 
 
 # app = FastAPI()
@@ -69,79 +70,68 @@ def hash_password(password: str) -> str:
     return hashed_password
 
 
-@app.post("/register")
-async def register(user: User):
-    hashed_password = sha256(user.password.encode()).hexdigest()
-    user_data = {
-        "username": user.username,
-        "password": hashed_password,
-        "email": user.email,
-        "preferences": {}
-    }
-
-    users_collection.insert_one(user_data)
-    return {"message": "User registered successfully"}
-
-@app.post("/login")
-async def login_user(user: UserLogin):
-    existing_user = users_collection.find_one({"email": user.email})
-    if not existing_user:
-        raise HTTPException(status_code=400, detail="Invalid email or password.")
-    
-    if not bcrypt.checkpw(user.password.encode('utf-8'), existing_user["password"]):
-        raise HTTPException(status_code=400, detail="Invalid email or password.")
-    
-    return {"message": "Login successful!"}
-    
 @app.get("/")
-async def read_root():
-    return {"message": "Hello, world!"}
+async def root():
+    return {"message": "API is running!"}
 
-
-@app.post("/register_with_preferences")
-async def register_with_preferences(preferences: Preferences):
-    # Hash password
-    hashed_password = sha256(preferences.password.encode()).hexdigest()
-    
-    # Find user and update their preferences
-    users_collection.update_one(
-        {"username": preferences.username},
-        {
-            "$set": {
-                "preferences": {
-                    "colors": preferences.preferredColors,
-                    "wearTypes": preferences.wearTypes,
-                    "fashionStyles": preferences.fashionStyles
-                },
-                "password": hashed_password
-            }
-        }
-    )
-    return {"message": "User registered with preferences successfully"}
 
 @app.post("/recommendations")
 
-try:
-    # Maintain the conversation history
-    for i in range(len(user_messages)):
-        conversation_history[user_messages[i]] = chatbot_responses[i]
+async def recommendations_endpoint(preferences: str):
+    print("Preferences received:", preferences)
+    rec_sys = RecommendationSystem()
 
-    # Generate chatbot responses
-    bot_retrieval_chain_response = chatbot.retrieval_chain(conversation_history, user_message)
-    bot_response = chatbot.response_chain(user_message, bot_retrieval_chain_response, conversation_history)
+    # Step 1: Generate response from the model
+    response_text = rec_sys.generate_with_groq(preferences)
 
-    # Update history queues
-    chatbot_responses.append(bot_response)
-    user_messages.append(user_message)
+    # Step 2: Extract recommended product IDs
+    retrieved_ids = rec_sys.extract_preferenced_items(response_text)
 
-    # Extract IDs for image generation
-    ids = chatbot.extract_by_keyword(bot_retrieval_chain_response)
+    # Step 3: Fetch product details from MongoDB
+    retrieved_object_ids = [ObjectId(id) for id in retrieved_ids]
+    products = list(collection.find({"_id": {"$in": retrieved_object_ids}}))
 
-    print("Conversation History:", conversation_history)
-    return {"response": bot_response, "ids": ids}
-except Exception as e:
-    return {"response": f"Error: {str(e)}", "ids": []}
+    return {"recommendedProducts": products}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))  
     uvicorn.run(app, host="0.0.0.0", port=port)  
+# if __name__ == "__main__":
+#     # Initialize the recommendation system
+#     rec_sys = RecommendationSystem()
+
+#     # Step 1: Generate recommendations from preferences
+#     response_text = rec_sys.generate_with_groq(dummy_preferences)
+
+#     # Step 2: Extract item IDs based on the response
+#     retrieved_ids = rec_sys.extract_preferenced_items(response_text)
+
+#     # Step 3: Print the retrieved item IDs
+#     print("Retrieved IDs:", retrieved_ids)
+#     load_dotenv()
+
+#     MONGODB_URI = os.getenv("MONGODB_URI")
+
+#     try:
+#         client = MongoClient(MONGODB_URI)
+#         client.admin.command('ping')
+#         print("Connected to MongoDB successfully!")
+#     except Exception as e:
+#         print("Failed to connect to MongoDB:", e)
+#         exit(1)
+
+#     # Select the database and collection
+#     db = client["test"]
+#     collection = db["productdata"]
+
+#     from bson import ObjectId  # Ensure ObjectIds are correctly formatted
+
+#     # Convert string IDs to ObjectId
+#     retrieved_object_ids = [ObjectId(id) for id in retrieved_ids]
+
+#     # Fetch product details
+#     product_details = fetch_product_details(retrieved_object_ids)
+
+#     # Print the fetched products
+#     for product in product_details:
+#         print(product)
