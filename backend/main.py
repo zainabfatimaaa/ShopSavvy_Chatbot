@@ -123,7 +123,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import time
-from optimized_chatbot import OptimizedChatbot
+from chatbot import OptimizedChatbot
 
 # Load environment variables (you can use python-dotenv if needed)
 MONGODB_URI = os.getenv("MONGODB_URI", "your_mongodb_uri")
